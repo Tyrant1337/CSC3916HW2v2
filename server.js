@@ -15,23 +15,6 @@ app.use(passport.initialize());
 
 var router = express.Router();
 
-function getJSONObject(req) {
-    var json = {
-        headers : "No Headers",
-        key: process.env.UNIQUE_KEY,
-        body : "No Body"
-    };
-
-    if (req.body != null) {
-        json.body = req.body;
-    }
-    if (req.headers != null) {
-        json.headers = req.headers;
-    }
-
-    return json;
-}
-
 router.route('/post')
     .post(authController.isAuthenticated, function (req, res) {
             console.log(req.body);
@@ -40,12 +23,11 @@ router.route('/post')
                 console.log("Content-Type: " + req.get('Content-Type'));
                 res = res.type(req.get('Content-Type'));
             }
-            var o = getJSONObject(req);
-            res.json(o);
+            res.send(req.body);
         }
     );
 
-router.route('/postjwt')
+router.route('/movies')
     .post(authJwtController.isAuthenticated, function (req, res) {
             console.log(req.body);
             res = res.status(200);
@@ -73,25 +55,23 @@ router.post('/signup', function(req, res) {
 
 router.post('/signin', function(req, res) {
 
-        var user = db.findOne(req.body.username);
+    var user = db.findOne(req.body.username);
 
-        if (!user) {
-            res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
+    if (!user) {
+        res.status(401).send({success: false, msg: 'Authentication failed. User not found.'});
+    }
+    else {
+        // check if password matches
+        if (req.body.password == user.password)  {
+            var userToken = { id : user.id, username: user.username };
+            var token = jwt.sign(userToken, process.env.UNIQUE_KEY);
+            res.json({success: true, token: 'JWT ' + token});
         }
         else {
-            // check if password matches
-            if (req.body.password == user.password)  {
-                var userToken = { id : user.id, username: user.username };
-                var token = jwt.sign(userToken, process.env.SECRET_KEY);
-                res.json({success: true, token: 'JWT ' + token});
-            }
-            else {
-                res.status(401).send({success: false, msg: 'Authentication failed. Wrong password.'});
-            }
-        };
+            res.status(401).send({success: false, msg: 'Authentication failed. Wrong password.'});
+        }
+    };
 });
 
 app.use('/', router);
 app.listen(process.env.PORT || 8080);
-
-module.exports = app; // for testing
