@@ -15,6 +15,19 @@ app.use(passport.initialize());
 
 var router = express.Router();
 
+function response(method, req, res){
+    if(Object.keys(req.body).length === 0){
+        res.status(400).send("The body was empty")
+    }
+    if(Object.keys(req.headers).length === 0){
+        res.status(400).send("The Headers were empty")
+    }
+    else{
+        (res.status(200).send("Response was a Success"))
+        res.json({message:"Successful Response",headers:req.headers, body:req.body, ENV:process.env.SECRET_KEY})
+
+    }
+}
 router.route('/post')
     .post(authController.isAuthenticated, function (req, res) {
             console.log(req.body);
@@ -38,6 +51,17 @@ router.route('/movies')
             res.send(req.body);
         }
     );
+    .delete(authJwtController.isAuthenticated, function(req,res){
+        response('deletes',req, res)
+    }
+    .get(authJwtController.isAuthenticated, function (req, res){
+        response('get', req, res)
+    }
+    .post(authJwtController.isAuthenticated, function (req, res){
+            response('post', req, res)
+    }
+
+);
 
 router.post('/signup', function(req, res) {
     if (!req.body.username || !req.body.password) {
@@ -64,14 +88,15 @@ router.post('/signin', function(req, res) {
         // check if password matches
         if (req.body.password == user.password)  {
             var userToken = { id : user.id, username: user.username };
-            var token = jwt.sign(userToken, process.env.UNIQUE_KEY);
+            var token = jwt.sign(userToken, process.env.SECRET_KEY);
             res.json({success: true, token: 'JWT ' + token});
         }
         else {
             res.status(401).send({success: false, msg: 'Authentication failed. Wrong password.'});
         }
-    };
+    }
 });
+
 
 app.use('/', router);
 app.listen(process.env.PORT || 8080);
